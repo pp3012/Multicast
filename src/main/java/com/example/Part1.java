@@ -11,17 +11,15 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
+/*
  * Part 1: so sánh băng thông sender.
  * Mỗi "luồng" gửi cùng 1 lượng dữ liệu với tốc độ cố định RATE_MBPS.
- *  - Unicast : sender gửi lặp cho từng receiver  -> sender đẩy ra ~ N x dữ liệu
- *  - Multicast: sender gửi 1 lần vào group        -> sender đẩy ra ~ 1 x dữ liệu
  */
 public class Part1 {
 
-    static final int FILE_MB = 5;                 // dữ liệu mỗi client cần nhận
+    static final int FILE_MB = 5;
     static final double RATE_MBPS = 20;           // tốc độ của mỗi luồng
-    static final int[] N_LIST = {1, 5, 10, 20};   // số client
+    static final int[] N_LIST = {1, 5, 10, 50, 100, 1000};   // số client
     static final int UNI_BASE = 6000;             // cổng unicast của receiver i = UNI_BASE + i
 
     record Result(long sentBytes, double seconds, long receivedBytes) {}
@@ -36,7 +34,7 @@ public class Part1 {
         new Random(1).nextBytes(payload);
 
         System.out.printf("%n%-4s %-10s %14s %14s %14s %11s%n",
-                "N", "Mode", "SenderOut(MB)", "SenderOut(Mbps)", "Received(MB)", "Delivered%");
+                "N", "Mode", "Sent(MB)", "Rate(Mbps)", "Received(MB)", "Delivered%");
 
         for (int n : N_LIST) {
             for (boolean multicast : new boolean[]{false, true}) {
@@ -51,8 +49,7 @@ public class Part1 {
                 Thread.sleep(500);
             }
         }
-        System.out.println("\nGhi chú: SenderOut = tổng byte sender đẩy ra (kèm 28B overhead UDP/IP mỗi gói).");
-        System.out.println("Delivered% < 100 ở multicast là do UDP mất gói -> lý do cần reliable ở Part 2.");
+        System.out.println("Delivered% < 100 ở multicast là do UDP mất gói");
     }
 
     static Result run(boolean multicast, int n, Common.Net net, int chunks, byte[] payload) throws Exception {
@@ -60,7 +57,7 @@ public class Part1 {
         List<DatagramChannel> receivers = new ArrayList<>();
         CountDownLatch ready = new CountDownLatch(n);
 
-        // --- Tạo N receiver, mỗi receiver 1 thread ---
+        //Tạo N receiver, mỗi receiver 1 thread
         for (int i = 0; i < n; i++) {
             DatagramChannel ch = multicast
                     ? Common.openMulticastReceiver(net)
@@ -76,16 +73,15 @@ public class Part1 {
                         received.addAndGet(buf.position());
                     }
                 } catch (IOException e) {
-                    // channel bị đóng -> thoát thread
                 }
             });
             t.setDaemon(true);
             t.start();
         }
         ready.await();
-        Thread.sleep(300); // chờ join/bind ổn định
+        Thread.sleep(300);
 
-        // --- Sender ---
+        //Sender
         DatagramChannel sender = Common.openSender(net);
         InetSocketAddress groupAddr = new InetSocketAddress(Common.GROUP, Common.PORT);
         InetSocketAddress[] uniAddrs = new InetSocketAddress[n];
@@ -96,7 +92,6 @@ public class Part1 {
         long start = System.nanoTime();
 
         for (int k = 0; k < chunks; k++) {
-            // giữ tốc độ mỗi luồng = RATE_MBPS
             Common.paceTo(start, (long) k * Common.CHUNK, RATE_MBPS);
             if (multicast) {
                 pkt.clear();
