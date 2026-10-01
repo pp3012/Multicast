@@ -14,8 +14,6 @@ import java.util.concurrent.locks.LockSupport;
 
 /**
  * Part 2 - Sender.
- * Args (tùy chọn): [đường dẫn file = sample.bin] [tốc độ Mbps = 20]
- *
  * Luồng: gửi hết DATA bằng multicast -> gửi vài gói END -> nhận NACK (unicast) -> gửi lại (repair) bằng multicast
  *        -> dừng khi 3 giây không còn NACK nào.
  */
@@ -62,7 +60,7 @@ public class Sender {
         nt.setDaemon(true);
         nt.start();
 
-        System.out.println("[SENDER] Chờ 3 giây cho receiver join group...");
+        System.out.println("[SENDER] Chờ receiver join group...");
         Thread.sleep(3000);
 
         // ===== Pha 1: gửi toàn bộ dữ liệu gốc =====
@@ -75,7 +73,7 @@ public class Sender {
             sendPacket(Common.END, 0);
             Thread.sleep(50);
         }
-        System.out.println("[SENDER] Đã gửi xong " + total + " gói gốc, chờ NACK...");
+        System.out.println("[SENDER] Đã gửi xong " + total + " gói");
 
         // ===== Pha 2: repair theo NACK =====
         long[] lastRepair = new long[total];
@@ -112,11 +110,10 @@ public class Sender {
 
         double sec = (System.nanoTime() - start) / 1e9;
         System.out.println("\n========== KẾT QUẢ SENDER ==========");
-        System.out.printf("Gói gốc        : %d%n", total);
-        System.out.printf("Gói repair     : %d (%.1f%% so với gói gốc)%n", repairs, 100.0 * repairs / total);
+        System.out.printf("Số gói cần gửi : %d%n", total);
+        System.out.printf("Số gói gửi lại : %d (%.1f%% so với tổng cần gửi)%n", repairs, 100.0 * repairs / total);
         System.out.printf("Số NACK nhận   : %d%n", nackCount.get());
         System.out.printf("Tổng thời gian : %.1f s%n", sec);
-        System.out.println("SHA-256 gốc    : " + hash);
         System.exit(0);
     }
 

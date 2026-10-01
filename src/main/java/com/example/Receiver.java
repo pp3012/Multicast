@@ -15,8 +15,7 @@ import java.util.Random;
 
 /**
  * Part 2 - Receiver.
- * Args: [id = 1] [drop = 0]   (drop là tỉ lệ 0..1, vd 0.1 = cố tình bỏ 10% gói DATA để giả lập mất gói)
- *
+ * Args: [id = 1] [drop = 0]
  * Luồng: nhận DATA -> đánh dấu gói đã có -> phát hiện thiếu (nhảy cóc seq / im lặng / nhận END)
  *        -> chờ backoff ngẫu nhiên 0-100ms -> gửi NACK unicast về sender -> nhận repair -> đủ thì ghép file + SHA-256.
  */
@@ -45,7 +44,7 @@ public class Receiver {
         long nackAt = 0, cooldownUntil = 0;   // nackAt = 0: chưa hẹn giờ gửi NACK
         int dropped = 0, nacksSent = 0;
 
-        System.out.printf("[R%d] Sẵn sàng, drop = %.0f%%. Chờ dữ liệu...%n", id, drop * 100);
+        System.out.printf("[R%d] Sẵn sàng, cấu hình drop = %.0f%%. Chờ sender gửi dữ liệu...%n", id, drop * 100);
 
         while (true) {
             sel.select(20);
@@ -103,7 +102,7 @@ public class Receiver {
                     int missing = sendNack(nackOut, senderNack, chunks, limit, id);
                     if (missing > 0) {
                         nacksSent++;
-                        System.out.printf("[R%d] Gửi NACK: thiếu %d gói (đã có %d/%d)%n", id, missing, count, total);
+                        System.out.printf("[R%d] Gửi NACK: thiếu %d gói (đã nhận %d/%d)%n", id, missing, count, total);
                     }
                     nackAt = 0;
                     cooldownUntil = now + 300_000_000L;   // chờ repair về rồi mới NACK tiếp
@@ -122,11 +121,9 @@ public class Receiver {
             }
         }
         System.out.printf("%n[R%d] ===== HOÀN TẤT =====%n", id);
-        System.out.printf("[R%d] Gói: %d | bị drop giả lập: %d | NACK đã gửi: %d | thời gian: %.1f s%n",
-                id, total, dropped, nacksSent, sec);
-        System.out.printf("[R%d] File: %s%n", id, outFile);
+        System.out.printf("[R%d] Cấu hình drop = %.0f%% (tương ứng %d gói) | NACK đã gửi: %d | thời gian: %.1f s%n",
+                id, drop*100, dropped, nacksSent, sec);
         System.out.printf("[R%d] SHA-256: %s%n", id, HexFormat.of().formatHex(md.digest()));
-        System.out.printf("[R%d] (so sánh với SHA-256 bên Sender, giống nhau = nhận đúng 100%%)%n", id);
     }
 
     static boolean hasMissing(byte[][] chunks, int limit) {
